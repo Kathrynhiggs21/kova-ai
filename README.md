@@ -1,2 +1,2 @@
-# -kova-setup-bot
+# Kova-ai 
 Kova ai assistant 
