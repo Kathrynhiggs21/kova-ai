@@ -1,4 +1,7 @@
 ## Integrations
+
+KOVA AI integrates with:
+
 - Gmail
 - Google Sheets
 - Twilio
