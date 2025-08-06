@@ -1,3 +1,3 @@
-# Kova-ai 
-Kova ai assistant 
-unzip kova-ai.zip -d myfolder
+# KOVA AI
+
+Full system automation, assistant logic, and branding.
