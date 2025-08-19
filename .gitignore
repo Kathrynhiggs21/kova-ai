@@ -20,6 +20,7 @@ yarn-error.log*
 
 # Environment files
 .env
+.env.*
 
 # Editor directories and files
 .vscode/
@@ -30,3 +31,7 @@ yarn-error.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Mobile app builds
+.android/
+.ios/
