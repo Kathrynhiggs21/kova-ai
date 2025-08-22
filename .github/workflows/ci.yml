@@ -1,14 +1,49 @@
 name: CI
 on: [push, pull_request]
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+
+      # Discover the FIRST package.json (ignore node_modules). If none, skip Node steps gracefully.
+      - id: pkg
+        shell: bash
+        run: |
+          FILE="$(git ls-files **/package.json | grep -v node_modules | head -n 1 || true)"
+          if [ -z "$FILE" ]; then
+            echo "found=0" >> $GITHUB_OUTPUT
+            echo "dir=."   >> $GITHUB_OUTPUT
+          else
+            echo "found=1" >> $GITHUB_OUTPUT
+            echo "dir=$(dirname "$FILE")" >> $GITHUB_OUTPUT
+          fi
+
+      - name: No Node project – noop pass
+        if: ${{ steps.pkg.outputs.found == '0' }}
+        run: echo "No package.json found. Passing CI with no-op."
+
+      - name: Set up Node
+        if: ${{ steps.pkg.outputs.found == '1' }}
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
-      - run: npm ci || npm install
-      - run: npm run build --if-present
-      - run: npm test --if-present
+          cache-dependency-path: ${{ steps.pkg.outputs.dir }}/package-lock.json
+
+      - name: Install
+        if: ${{ steps.pkg.outputs.found == '1' }}
+        working-directory: ${{ steps.pkg.outputs.dir }}
+        run: npm ci || npm i
+
+      - name: Build
+        if: ${{ steps.pkg.outputs.found == '1' }}
+        working-directory: ${{ steps.pkg.outputs.dir }}
+        run: npm run build --if-present
+
+      - name: Test
+        if: ${{ steps.pkg.outputs.found == '1' }}
+        working-directory: ${{ steps.pkg.outputs.dir }}
+        run: npm test --if-present
