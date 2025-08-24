@@ -1,0 +1,95 @@
+# Mergify — KOVA autopilot
+# Place at repo root. Keep this identical across KOVA repos via your file-sync workflow.
+
+queue_rules:
+  - name: default
+    conditions:
+      - -conflict  # no merge conflicts
+      - -draft     # not a draft
+      # All required checks must pass (list exact names below).
+      - check-success=CI
+      - check-success=Build
+      - check-success=Lint
+      - check-success=Typecheck
+      - check-success=Test
+
+pull_request_rules:
+  # --- 1) Renovate PRs: merge when green ---
+  - name: auto-merge Renovate when CI is green
+    conditions:
+      - author=renovate[bot]
+      - label!=do-not-merge
+      - queue=default
+    actions:
+      label:
+        add:
+          - automerge
+      queue:
+        name: default
+        method: squash
+        update_method: rebase  # keeps PR updated before merge
+      delete_head_branch: {}
+
+  # --- 2) Repo File Sync / Ops Kit PRs (from your admin workflow) ---
+  - name: auto-merge file-sync PRs when CI is green
+    conditions:
+      # match by author or title keywords — adjust to your bot/action
+      - or:
+          - author=github-actions[bot]
+          - author=repo-file-sync[bot]
+          - title~=(?i)sync ops kit|file sync|apply KOVA GitHub Ops Starter
+      - label!=do-not-merge
+      - queue=default
+    actions:
+      label:
+        add:
+          - automerge
+      queue:
+        name: default
+        method: squash
+        update_method: rebase
+      delete_head_branch: {}
+
+  # --- 3) Dependabot (optional) ---
+  - name: auto-merge Dependabot patch/minor when CI is green
+    conditions:
+      - author=dependabot[bot]
+      - -draft
+      - label!=do-not-merge
+      - files~=^(package\.json|pnpm-lock\.yaml|yarn\.lock|package-lock\.json|.*\.toml|.*\.gradle|.*\.sbt)$
+      - or:
+          - title~=(?i)\bpatch\b
+          - title~=(?i)\bminor\b
+      - queue=default
+    actions:
+      label:
+        add: [automerge]
+      queue:
+        name: default
+        method: squash
+        update_method: rebase
+      delete_head_branch: {}
+
+  # --- 4) Manual fast-path: label any PR "automerge" ---
+  - name: merge PRs labeled 'automerge' when CI is green
+    conditions:
+      - label=automerge
+      - queue=default
+    actions:
+      queue:
+        name: default
+        method: squash
+        update_method: rebase
+      delete_head_branch: {}
+
+  # --- 5) Safety valve: block if explicitly flagged ---
+  - name: block if do-not-merge
+    conditions:
+      - label=do-not-merge
+    actions:
+      dismiss_reviews:
+        approved: true
+        changes_requested: true
+      queue:
+        name: default
+        priority: low
