@@ -1,0 +1,100 @@
+name: Zoo V8 Render
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: Number of cards to process; use 0 for all
+        required: true
+        default: "16"
+      offset:
+        description: Starting row offset
+        required: true
+        default: "0"
+      concurrency:
+        description: Parallel Gemini jobs
+        required: true
+        default: "4"
+      image_size:
+        description: Gemini generation resolution
+        required: true
+        type: choice
+        options:
+          - 1K
+          - 2K
+          - 4K
+        default: 2K
+      mode:
+        description: Art plate for production; full card for visual proofs only
+        required: true
+        type: choice
+        options:
+          - art-plate
+          - full-card
+        default: art-plate
+      dry_run:
+        description: Validate and write prompt previews without paid generation
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_IMAGE_MODEL: gemini-3.1-flash-image
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Zoo V8 dependencies
+        run: pip install -r requirements-zoo-v8.txt
+
+      - name: Validate Gemini secret
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "GEMINI_API_KEY is not configured for this repository."
+            exit 1
+          fi
+          echo "GEMINI_API_KEY is available."
+
+      - name: Run Zoo V8 renderer
+        shell: bash
+        run: |
+          EXTRA=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            EXTRA="--dry-run"
+          fi
+          python scripts/render_cards.py \
+            --csv data/v7.1_zoo_prompts.csv \
+            --limit "${{ inputs.limit }}" \
+            --offset "${{ inputs.offset }}" \
+            --concurrency "${{ inputs.concurrency }}" \
+            --image-size "${{ inputs.image_size }}" \
+            --mode "${{ inputs.mode }}" \
+            $EXTRA
+
+      - name: Upload V8 renders and reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zoo-v8-${{ inputs.mode }}-offset-${{ inputs.offset }}-limit-${{ inputs.limit }}
+          path: |
+            renders/v8/**
+            reports/v8/**
+          if-no-files-found: warn
+          retention-days: 14
