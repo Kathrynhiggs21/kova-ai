@@ -22,7 +22,9 @@ jobs:
       - name: Run Renderer
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python scripts/render_cards.py --csv "${{ github.event.inputs.prompt_csv }}" --limit ${{ github.event.inputs.batch_limit }}
+          PROMPT_CSV: ${{ github.event.inputs.prompt_csv }}
+          BATCH_LIMIT: ${{ github.event.inputs.batch_limit }}
+        run: python scripts/render_cards.py --csv "$PROMPT_CSV" --limit "$BATCH_LIMIT"
       - uses: actions/upload-artifact@v4
         with:
           name: zoo-renders-${{ github.run_number }}
