@@ -1,0 +1,33 @@
+name: Kova-AI Gemini Card Renderer
+on:
+  workflow_dispatch:
+    inputs:
+      batch_limit:
+        description: 'Cards to render (10 for pilot, 0 for all)'
+        required: true
+        default: '10'
+      prompt_csv:
+        description: 'Path to prompt CSV'
+        required: true
+        default: 'data/v7.1_zoo_prompts.csv'
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install google-genai
+      - name: Run Renderer
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/render_cards.py --csv "${{ github.event.inputs.prompt_csv }}" --limit ${{ github.event.inputs.batch_limit }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zoo-renders-${{ github.run_number }}
+          path: |
+            renders/
+            reports/
+          retention-days: 30
+
