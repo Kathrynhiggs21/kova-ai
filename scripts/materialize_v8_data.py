@@ -20,7 +20,7 @@ EXPECTED = {
         "content_sha256": "54abe58f94b0cac989b4c30c09d3737873633828e354147421d76a9313f2e5bc",
     },
     "MASTER_SPECIES_DATABASE.csv": {
-        "content_sha256": "a925d42a69d9f231d668945b210c0ea00fd869041ff375d163d84f30ba5caa6e",
+        "content_sha256": "ce0636bb12d5d26f8468e66536c774e997dc3467aa3e35b3499e706cfa201155",
     },
 }
 
