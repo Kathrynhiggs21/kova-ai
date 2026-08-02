@@ -70,6 +70,7 @@ class V8Rules:
     pop_color_distribution: str
     title_rule: str
     info_panel_rule: str
+    shared_panel_material_rule: str
     text_contrast_rule: str
     plaque_material_rule: str
     plaque_shape: str
@@ -119,10 +120,17 @@ def resolve_v8_rules(row: Mapping[str, str]) -> V8Rules:
             "Fennec Fox lower-panel hierarchy: scientific name, compact stat line, fun fact, identifier at lower left, "
             "canonical number plaque at lower right"
         ),
+        shared_panel_material_rule=(
+            f"Use the exact same continuous organic material, species, color, grain, texture, age, finish, and edge language for both "
+            f"the top title box and lower information box: {panel_material}. They may differ in shape and size, but must read as "
+            "two pieces cut from the same physical source material. Never mix wood with parchment, bark with stone, or dark and light panel materials on one card"
+        ),
         text_contrast_rule=(
             "light lettering on dark material and dark lettering on light material; readable at app-thumbnail size"
         ),
-        plaque_material_rule=f"Match the plaque to {panel_material}; never use a universal unrelated badge material",
+        plaque_material_rule=(
+            f"Match the plaque to the same exact {panel_material} used by both text boxes; vary only its shape, edge, mounting, and finish"
+        ),
         plaque_shape=_text(row, "Plaque Shape", "plaque_shape") or _choose(card_id, "plaque_shape", PLAQUE_SHAPES),
         plaque_edge=_text(row, "Plaque Edge", "plaque_edge") or _choose(card_id, "plaque_edge", PLAQUE_EDGES),
         plaque_mounting=_text(row, "Plaque Mounting", "plaque_mounting")
@@ -135,7 +143,7 @@ def augment_prompt(row: Mapping[str, str], base_prompt: str, mode: str = "art-pl
     card_id = _text(row, "Card ID", "Card_ID", "id")
     subject = _text(row, "Subject", "Species", "species")
     text_instruction = (
-        "Build finished blank title, lower information, and number-plaque surfaces. Render no letters, numbers, symbols, logos, or fake text anywhere."
+        "Build finished blank title, lower information, and number-plaque surfaces. The title and lower panel must use the exact same organic material. Render no letters, numbers, symbols, logos, or fake text anywhere."
         if mode == "art-plate"
         else "This is a proof mode; exact typography is still applied after generation."
     )
@@ -148,11 +156,12 @@ ZOO V8 LOCKED ART-PLATE DIRECTIVE — {card_id} — {subject}
 - Do not create an equal-width border. Partially obscure the surround with habitat-correct natural elements.
 - TITLE SURFACE: blank straight horizontal habitat-matched material at the top.
 - LOWER SURFACE: blank integrated habitat-matched material using the Fennec Fox hierarchy and generous clean text-safe area.
-- PLAQUE: blank material-matched {rules.plaque_shape}, {rules.plaque_edge}, {rules.plaque_mounting}.
+- SHARED TEXT-BOX MATERIAL — HARD LOCK: {rules.shared_panel_material_rule}.
+- PLAQUE: blank material-matched {rules.plaque_shape}, {rules.plaque_edge}, {rules.plaque_mounting}; {rules.plaque_material_rule}.
 - SUBJECT: accurate {subject}, large and dominant, natural pose, correct habitat, realistic refined painterly finish.
 - GEOMETRY: portrait 3:4 generation canvas, central 5:7 crop safe; keep anatomy and all blank panels inside the central 94% width.
 - TEXT MODE: {text_instruction}
-- REJECT: typography, glyphs, numbers, logos, footer branding, compass medallions, parchment default, uniform border, neon, rainbow, glow, chrome, plastic, duplicated panels, obstructed anatomy.
+- REJECT: typography, glyphs, numbers, logos, footer branding, compass medallions, parchment default, uniform border, neon, rainbow, glow, chrome, plastic, mismatched title/lower-panel material, duplicated panels, obstructed anatomy.
 """.strip()
 
     return f"{base_prompt.strip()}\n\n{block}", rules
