@@ -17,7 +17,7 @@ TARGETS = (
 
 EXPECTED = {
     "MASTER_CARD_PRODUCTION_DATABASE.csv": {
-        "content_sha256": "ca266c48aec60d79e72383d407c9c4bb0dc28449794ee4d5875c6dc0a90bbf2e",
+        "content_sha256": "54abe58f94b0cac989b4c30c09d3737873633828e354147421d76a9313f2e5bc",
     },
     "MASTER_SPECIES_DATABASE.csv": {
         "payload_sha256": "bc715136d226a64f13e20d97d0054c7d98a2c88eeb1db60be3f31881908da99f",
