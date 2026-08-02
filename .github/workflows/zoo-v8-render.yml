@@ -37,6 +37,10 @@ on:
         required: true
         type: boolean
         default: true
+  pull_request:
+    paths:
+      - ".github/zoo-v8-dry-run.request"
+      - ".github/workflows/zoo-v8-render.yml"
 
 permissions:
   contents: read
@@ -48,6 +52,12 @@ jobs:
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GEMINI_IMAGE_MODEL: gemini-3.1-flash-image
+      ZOO_LIMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.limit || '16' }}
+      ZOO_OFFSET: ${{ github.event_name == 'workflow_dispatch' && inputs.offset || '0' }}
+      ZOO_CONCURRENCY: ${{ github.event_name == 'workflow_dispatch' && inputs.concurrency || '4' }}
+      ZOO_IMAGE_SIZE: ${{ github.event_name == 'workflow_dispatch' && inputs.image_size || '2K' }}
+      ZOO_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'art-plate' }}
+      ZOO_DRY_RUN: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run }}
 
     steps:
       - name: Check out repository
@@ -63,7 +73,7 @@ jobs:
         run: pip install -r requirements-zoo-v8.txt
 
       - name: Validate Gemini secret
-        if: ${{ !inputs.dry_run }}
+        if: ${{ env.ZOO_DRY_RUN != 'true' }}
         shell: bash
         run: |
           if [ -z "$GEMINI_API_KEY" ]; then
@@ -76,23 +86,23 @@ jobs:
         shell: bash
         run: |
           EXTRA=""
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
+          if [ "$ZOO_DRY_RUN" = "true" ]; then
             EXTRA="--dry-run"
           fi
           python scripts/render_cards.py \
             --csv data/v7.1_zoo_prompts.csv \
-            --limit "${{ inputs.limit }}" \
-            --offset "${{ inputs.offset }}" \
-            --concurrency "${{ inputs.concurrency }}" \
-            --image-size "${{ inputs.image_size }}" \
-            --mode "${{ inputs.mode }}" \
+            --limit "$ZOO_LIMIT" \
+            --offset "$ZOO_OFFSET" \
+            --concurrency "$ZOO_CONCURRENCY" \
+            --image-size "$ZOO_IMAGE_SIZE" \
+            --mode "$ZOO_MODE" \
             $EXTRA
 
       - name: Upload V8 renders and reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: zoo-v8-${{ inputs.mode }}-offset-${{ inputs.offset }}-limit-${{ inputs.limit }}
+          name: zoo-v8-${{ env.ZOO_MODE }}-offset-${{ env.ZOO_OFFSET }}-limit-${{ env.ZOO_LIMIT }}
           path: |
             renders/v8/**
             reports/v8/**
