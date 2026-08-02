@@ -40,10 +40,11 @@ on:
     paths:
       - ".github/workflows/zoo-v8-render.yml"
       - "scripts/zoo_v8_pipeline.py"
+      - "scripts/zoo_v8_complete_runner.py"
+      - "scripts/materialize_v8_data.py"
       - "scripts/zoo_v8_rules.py"
       - "scripts/test_zoo_v8_pipeline.py"
-      - "data/MASTER_CARD_PRODUCTION_DATABASE.csv"
-      - "data/MASTER_SPECIES_DATABASE.csv"
+      - "data/bootstrap/**"
       - "requirements-zoo-v8.txt"
 
 permissions:
@@ -70,6 +71,9 @@ jobs:
 
       - name: Install Zoo V8 dependencies
         run: pip install -r requirements-zoo-v8.txt
+
+      - name: Materialize canonical V8 source files
+        run: python scripts/materialize_v8_data.py
 
       - name: Run unit tests
         run: python -m pytest -q scripts/test_zoo_v8_pipeline.py
@@ -120,7 +124,7 @@ jobs:
           if [ "${{ steps.settings.outputs.overwrite }}" = "true" ]; then
             ARGS+=(--overwrite)
           fi
-          python scripts/zoo_v8_pipeline.py "${ARGS[@]}"
+          python scripts/zoo_v8_complete_runner.py "${ARGS[@]}"
 
       - name: Publish run summary
         if: always()
