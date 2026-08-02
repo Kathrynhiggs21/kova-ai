@@ -41,21 +41,12 @@ on:
         required: true
         type: boolean
         default: true
-  pull_request:
-    branches:
-      - main
-    paths:
-      - scripts/render_cards.py
-      - scripts/zoo_v8_rules.py
-      - requirements-zoo-v8.txt
-      - .github/workflows/zoo-v8-render.yml
 
 permissions:
   contents: read
 
 jobs:
   render:
-    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
@@ -112,69 +103,6 @@ jobs:
           name: zoo-v8-${{ inputs.mode }}-${{ inputs.card_id || format('offset-{0}-limit-{1}', inputs.offset, inputs.limit) }}
           path: |
             renders/v8/**
-            reports/v8/**
-          if-no-files-found: error
-          retention-days: 14
-
-  end-to-end-image-pilot:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      GEMINI_IMAGE_MODEL: gemini-3.1-flash-image
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: requirements-zoo-v8.txt
-
-      - name: Install Zoo V8 dependencies
-        run: pip install -r requirements-zoo-v8.txt
-
-      - name: Require Gemini secret
-        shell: bash
-        run: |
-          test -n "$GEMINI_API_KEY" || { echo "Missing GEMINI_API_KEY"; exit 1; }
-
-      - name: Generate one complete V8 image
-        run: |
-          python scripts/render_cards.py \
-            --csv data/v7.1_zoo_prompts.csv \
-            --card-id A001 \
-            --concurrency 1 \
-            --image-size 1K \
-            --mode full-card \
-            --retries 1
-
-      - name: Verify image artifact
-        shell: bash
-        run: |
-          IMAGE=$(find renders/v8/full-card -type f -name '*.png' -print -quit)
-          test -n "$IMAGE" || { echo "No PNG image produced"; exit 1; }
-          test $(stat -c%s "$IMAGE") -gt 10000 || { echo "PNG is too small"; exit 1; }
-          python - <<'PY'
-          from pathlib import Path
-          from PIL import Image
-          files = list(Path('renders/v8/full-card').glob('*.png'))
-          assert len(files) == 1, f'Expected one PNG, found {len(files)}'
-          with Image.open(files[0]) as image:
-              image.verify()
-          print(files[0])
-          PY
-
-      - name: Upload generated image
-        uses: actions/upload-artifact@v4
-        with:
-          name: zoo-v8-end-to-end-A001-image
-          path: |
-            renders/v8/full-card/*.png
             reports/v8/**
           if-no-files-found: error
           retention-days: 14
