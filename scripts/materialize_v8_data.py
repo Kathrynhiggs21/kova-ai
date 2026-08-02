@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import gzip
+import hashlib
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -19,13 +20,20 @@ def materialize(target_name: str) -> Path:
     parts = sorted(BOOTSTRAP_DIR.glob(f"{target_name}.gz.part*.b64"))
     if not parts:
         raise SystemExit(f"Missing bootstrap parts for {target_name}")
-    payload = "".join(part.read_text(encoding="ascii").strip() for part in parts)
+    payload_parts: list[str] = []
+    for part in parts:
+        text = part.read_text(encoding="ascii").strip()
+        print(f"BOOTSTRAP_PART {part.name} length={len(text)} sha256={hashlib.sha256(text.encode('ascii')).hexdigest()}")
+        payload_parts.append(text)
+    payload = "".join(payload_parts)
+    print(f"BOOTSTRAP_TOTAL {target_name} length={len(payload)} sha256={hashlib.sha256(payload.encode('ascii')).hexdigest()}")
     compressed = base64.b64decode(payload, validate=True)
+    print(f"BOOTSTRAP_GZIP {target_name} bytes={len(compressed)} sha256={hashlib.sha256(compressed).hexdigest()}")
     content = gzip.decompress(compressed)
     target = DATA_DIR / target_name
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(content)
-    print(f"Materialized {target.relative_to(BASE_DIR)} ({len(content)} bytes)")
+    print(f"Materialized {target.relative_to(BASE_DIR)} ({len(content)} bytes) sha256={hashlib.sha256(content).hexdigest()}")
     return target
 
 
