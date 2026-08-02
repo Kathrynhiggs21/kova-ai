@@ -128,6 +128,7 @@ def resolve_v8_rules(row: Mapping[str, str]) -> V8Rules:
             "Species",
             "species",
             "Habitat",
+            "Background",
             "Category",
             "Class",
             "Prompt",
@@ -136,7 +137,7 @@ def resolve_v8_rules(row: Mapping[str, str]) -> V8Rules:
         )
     ).lower()
 
-    explicit_family = _text(row, "Pop Color Family", "pop_color_family")
+    explicit_family = _text(row, "Pop Color Family", "Pop Color", "pop_color_family")
     explicit_source = _text(row, "Pop Color Source", "pop_color_source")
 
     ranked = []
@@ -220,8 +221,8 @@ def augment_prompt(row: Mapping[str, str], base_prompt: str, mode: str = "art-pl
     if mode == "art-plate":
         text_instruction = (
             "Construct the title plank, lower information panel, and number plaque as finished blank physical materials. "
-            "The title and lower panel must use the exact same organic material. Do not render final small lettering; "
-            "leave clean usable surfaces for deterministic text composition."
+            "The title and lower panel must use the exact same organic material. Render no letters, words, numbers, symbols, logos, "
+            "watermarks, signatures, or fake glyphs anywhere. Leave clean usable surfaces for deterministic text composition."
         )
     else:
         text_instruction = (
@@ -231,7 +232,7 @@ def augment_prompt(row: Mapping[str, str], base_prompt: str, mode: str = "art-pl
 
     block = f"""
 
-ZOO V8 LOCKED PRODUCTION DIRECTIVE — CARD {card_id} — {subject}
+ZOO V8 LOCKED ART-PLATE DIRECTIVE — CARD {card_id} — {subject}
 - POP COLOR: Use one dominant family: {rules.pop_color_family}, sampled from {rules.pop_color_source}.
 - POP PLACEMENT: It is a distinct outer surround behind the asymmetrical natural frame, visibly exposed across about {rules.pop_color_visibility_target}% of the perimeter. Distribution: {rules.pop_color_distribution}. Intensity: {rules.pop_color_intensity}.
 - POP RESTRICTIONS: Partially obscure the color with habitat-correct framing. Never turn it into a uniform border, neon glow, full-card wash, title-plank fill, or lower-panel fill.
@@ -239,10 +240,10 @@ ZOO V8 LOCKED PRODUCTION DIRECTIVE — CARD {card_id} — {subject}
 - LOWER PANEL: {rules.info_panel_rule}.
 - SHARED TEXT-BOX MATERIAL — HARD LOCK: {rules.shared_panel_material_rule}.
 - CONTRAST: {rules.text_contrast_rule}.
-- NUMBER PLAQUE: {rules.plaque_material_rule}; use a {rules.plaque_shape}, {rules.plaque_edge}, {rules.plaque_mounting}. Exact ID appears once only.
+- NUMBER PLAQUE: {rules.plaque_material_rule}; use a {rules.plaque_shape}, {rules.plaque_edge}, {rules.plaque_mounting}. Exact ID appears once only after deterministic composition.
 - GEOMETRY: Compose for a 3:4 generation canvas that will be center-cropped to exact 5:7. Keep all essential subject anatomy, title structure, lower panel, and plaque inside the central 94% width safe area.
 - TEXT MODE: {text_instruction}
-- REJECT: flat uniform borders, hidden pop color, title and lower panels made from different materials, mismatched grain or finish between text boxes, plastic/chrome rims, neon, rainbow, glow, fake text, duplicated IDs, or obstructed subject anatomy.
+- REJECT: any typography or glyphs, flat uniform borders, hidden pop color, title and lower panels made from different materials, mismatched grain or finish between text boxes, plastic/chrome rims, neon, rainbow, glow, duplicated panels, or obstructed subject anatomy.
 """.strip()
 
     return f"{base_prompt.strip()}\n\n{block}", rules
