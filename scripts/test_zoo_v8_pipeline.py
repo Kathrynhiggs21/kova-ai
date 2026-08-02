@@ -15,13 +15,13 @@ def test_join_first_16_and_card_families_ready():
     assert len(rows) == 517
     assert len({row["Card ID"] for row in rows}) == 517
 
-    first = select_rows(rows, "", 0, 16, False)
+    first = select_rows(rows, "", 0, 16)
     assert all(row["Data Status"] == "READY" for row in first)
     assert first[0]["Subject"] == "Aye-Aye"
     assert first[13]["Subject"] == "Fennec Fox"
     assert first[0]["Category Back ID"] == "BACK-01"
 
-    mixed = select_rows(rows, "X026,BACK-01", 0, 0, False)
+    mixed = select_rows(rows, "X026,BACK-01", 0, 0)
     assert mixed[0]["Data Status"] == "READY"
     assert "utility" in mixed[0]["Type"].lower()
     assert mixed[1]["Type"] == "Card Back"
