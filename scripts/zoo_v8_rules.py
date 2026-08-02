@@ -108,6 +108,7 @@ class V8Rules:
     pop_color_distribution: str
     title_rule: str
     info_panel_rule: str
+    shared_panel_material_rule: str
     text_contrast_rule: str
     plaque_material_rule: str
     plaque_shape: str
@@ -174,10 +175,17 @@ def resolve_v8_rules(row: Mapping[str, str]) -> V8Rules:
             "Use the Fennec Fox reference lower-panel hierarchy and spacing: scientific name first, compact stat line, "
             "separate identifier/fun-fact areas, and the canonical number plaque in its safe zone"
         ),
+        shared_panel_material_rule=(
+            f"Use the exact same continuous organic material, species, color, grain, texture, age, finish, and edge language for both "
+            f"the top title box and the lower information box: {panel_material}. They may differ in shape and size, but must read as "
+            "two pieces cut from the same physical source material. Never mix wood with parchment, bark with stone, or dark and light panel materials on one card"
+        ),
         text_contrast_rule=(
             "Use light lettering on dark material and dark lettering on light material; preserve strong legibility at app-thumbnail size"
         ),
-        plaque_material_rule=f"Match the plaque to {panel_material}; never use a universal unrelated badge material",
+        plaque_material_rule=(
+            f"Match the plaque to the same exact {panel_material} used by both text boxes; variation is allowed only in plaque shape, edge, mounting, and finish"
+        ),
         plaque_shape=_text(row, "Plaque Shape", "plaque_shape") or _choose(card_id, "plaque_shape", PLAQUE_SHAPES),
         plaque_edge=_text(row, "Plaque Edge", "plaque_edge") or _choose(card_id, "plaque_edge", PLAQUE_EDGES),
         plaque_mounting=_text(row, "Plaque Mounting", "plaque_mounting")
@@ -212,7 +220,8 @@ def augment_prompt(row: Mapping[str, str], base_prompt: str, mode: str = "art-pl
     if mode == "art-plate":
         text_instruction = (
             "Construct the title plank, lower information panel, and number plaque as finished blank physical materials. "
-            "Do not render final small lettering; leave clean usable surfaces for deterministic text composition."
+            "The title and lower panel must use the exact same organic material. Do not render final small lettering; "
+            "leave clean usable surfaces for deterministic text composition."
         )
     else:
         text_instruction = (
@@ -228,11 +237,12 @@ ZOO V8 LOCKED PRODUCTION DIRECTIVE — CARD {card_id} — {subject}
 - POP RESTRICTIONS: Partially obscure the color with habitat-correct framing. Never turn it into a uniform border, neon glow, full-card wash, title-plank fill, or lower-panel fill.
 - TITLE: {rules.title_rule}.
 - LOWER PANEL: {rules.info_panel_rule}.
+- SHARED TEXT-BOX MATERIAL — HARD LOCK: {rules.shared_panel_material_rule}.
 - CONTRAST: {rules.text_contrast_rule}.
 - NUMBER PLAQUE: {rules.plaque_material_rule}; use a {rules.plaque_shape}, {rules.plaque_edge}, {rules.plaque_mounting}. Exact ID appears once only.
 - GEOMETRY: Compose for a 3:4 generation canvas that will be center-cropped to exact 5:7. Keep all essential subject anatomy, title structure, lower panel, and plaque inside the central 94% width safe area.
 - TEXT MODE: {text_instruction}
-- REJECT: flat uniform borders, hidden pop color, mismatched panels, plastic/chrome rims, neon, rainbow, glow, fake text, duplicated IDs, or obstructed subject anatomy.
+- REJECT: flat uniform borders, hidden pop color, title and lower panels made from different materials, mismatched grain or finish between text boxes, plastic/chrome rims, neon, rainbow, glow, fake text, duplicated IDs, or obstructed subject anatomy.
 """.strip()
 
     return f"{base_prompt.strip()}\n\n{block}", rules
