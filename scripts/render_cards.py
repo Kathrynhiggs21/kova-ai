@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """Kova AI Zoo V8 image renderer.
 
-Reads the existing 517-card prompt CSV, resolves the locked V8 visual rules,
-generates with Gemini, crops supported 3:4 output to exact 5:7, resumes safely,
-and records JSONL production metadata.
+Reads the canonical card prompt CSV, resolves locked V8 visual rules, generates
+images with the current Gemini GenerateContent API, crops to exact 5:7, and
+records resumable JSONL production metadata.
 """
 
 from __future__ import annotations
 
 import argparse
-import base64
 import csv
 import io
 import json
@@ -24,6 +23,7 @@ from pathlib import Path
 from threading import Lock
 
 from google import genai
+from google.genai import types
 from PIL import Image
 
 from zoo_v8_rules import augment_prompt, validate_row
@@ -61,18 +61,41 @@ def append_jsonl(path: Path, record: dict) -> None:
             handle.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
-def extract_image_bytes(interaction) -> bytes:
-    output_image = getattr(interaction, "output_image", None)
-    data = getattr(output_image, "data", None) if output_image is not None else None
-    if data:
-        return base64.b64decode(data) if isinstance(data, str) else bytes(data)
+def extract_image_bytes(response) -> bytes:
+    """Extract the first inline image returned by Gemini GenerateContent."""
+    candidates = getattr(response, "candidates", None) or []
+    for candidate in candidates:
+        content = getattr(candidate, "content", None)
+        for part in getattr(content, "parts", None) or []:
+            inline_data = getattr(part, "inline_data", None)
+            data = getattr(inline_data, "data", None) if inline_data else None
+            if data:
+                return bytes(data)
 
-    for step in getattr(interaction, "steps", []) or []:
-        for block in getattr(step, "content", []) or []:
-            block_data = getattr(block, "data", None)
-            if getattr(block, "type", None) == "image" and block_data:
-                return base64.b64decode(block_data) if isinstance(block_data, str) else bytes(block_data)
-    raise RuntimeError("Gemini response did not contain an image")
+            # Newer google-genai releases expose a convenient image conversion.
+            as_image = getattr(part, "as_image", None)
+            if callable(as_image):
+                image = as_image()
+                if image is not None:
+                    buffer = io.BytesIO()
+                    image.save(buffer, format="PNG")
+                    return buffer.getvalue()
+
+    # Some SDK versions expose response.parts directly.
+    for part in getattr(response, "parts", None) or []:
+        inline_data = getattr(part, "inline_data", None)
+        data = getattr(inline_data, "data", None) if inline_data else None
+        if data:
+            return bytes(data)
+        as_image = getattr(part, "as_image", None)
+        if callable(as_image):
+            image = as_image()
+            if image is not None:
+                buffer = io.BytesIO()
+                image.save(buffer, format="PNG")
+                return buffer.getvalue()
+
+    raise RuntimeError("Gemini response did not contain image bytes")
 
 
 def save_exact_5x7(image_bytes: bytes, output_path: Path) -> tuple[int, int]:
@@ -93,8 +116,15 @@ def save_exact_5x7(image_bytes: bytes, output_path: Path) -> tuple[int, int]:
             box = (0, top, width, top + new_height)
 
         cropped = image.crop(box)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         cropped.save(output_path, format="PNG", optimize=True)
-        return cropped.size
+
+    # Hard fail unless a real, readable PNG exists.
+    if not output_path.exists() or output_path.stat().st_size < 10_000:
+        raise RuntimeError(f"Image output missing or unexpectedly small: {output_path}")
+    with Image.open(output_path) as check:
+        check.verify()
+    return cropped.size
 
 
 def output_filename(row: dict[str, str], mode: str) -> str:
@@ -102,8 +132,26 @@ def output_filename(row: dict[str, str], mode: str) -> str:
     subject = field(row, "Subject", "Species", "species") or "Card"
     card_type = field(row, "Card Type", "Type", "card_type").lower()
     face = "back" if "back" in card_type else "front"
-    suffix = "art_plate" if mode == "art-plate" else "proof"
+    suffix = "art_plate" if mode == "art-plate" else "final_proof"
     return f"{safe_name(card_id)}_{safe_name(subject)}_{face}_V8_{suffix}.png"
+
+
+def generate_image(prompt: str, image_size: str) -> bytes:
+    client = genai.Client(api_key=API_KEY)
+    response = client.models.generate_content(
+        model=MODEL_NAME,
+        contents=[prompt],
+        config=types.GenerateContentConfig(
+            response_modalities=["IMAGE"],
+            response_format={
+                "image": {
+                    "aspect_ratio": "3:4",
+                    "image_size": image_size,
+                }
+            },
+        ),
+    )
+    return extract_image_bytes(response)
 
 
 def render_one(
@@ -120,13 +168,14 @@ def render_one(
     prompt, rules = augment_prompt(row, base_prompt, mode=mode)
     output_path = output_dir / output_filename(row, mode)
 
-    if output_path.exists() and output_path.stat().st_size > 0:
+    if output_path.exists() and output_path.stat().st_size > 10_000:
         record = {
             "card_id": card_id,
             "subject": subject,
             "status": "completed",
             "skipped": True,
             "file": str(output_path),
+            "bytes": output_path.stat().st_size,
             "rules": rules.to_dict(),
         }
         append_jsonl(status_path, record)
@@ -135,24 +184,14 @@ def render_one(
     last_error = ""
     for attempt in range(1, retries + 2):
         try:
-            client = genai.Client(api_key=API_KEY)
-            interaction = client.interactions.create(
-                model=MODEL_NAME,
-                input=prompt,
-                response_format={
-                    "type": "image",
-                    "mime_type": "image/png",
-                    "aspect_ratio": "3:4",
-                    "image_size": image_size,
-                },
-            )
-            raw = extract_image_bytes(interaction)
+            raw = generate_image(prompt, image_size)
             final_size = save_exact_5x7(raw, output_path)
             record = {
                 "card_id": card_id,
                 "subject": subject,
                 "status": "completed",
                 "file": str(output_path),
+                "bytes": output_path.stat().st_size,
                 "model": MODEL_NAME,
                 "mode": mode,
                 "requested_size": image_size,
@@ -197,6 +236,7 @@ def main() -> int:
     parser.add_argument("--csv", type=Path, default=BASE_DIR / "data" / "v7.1_zoo_prompts.csv")
     parser.add_argument("--limit", type=int, default=10, help="Cards to process; 0 means all")
     parser.add_argument("--offset", type=int, default=0)
+    parser.add_argument("--card-id", default="", help="Render one exact canonical card ID")
     parser.add_argument("--concurrency", type=int, default=4)
     parser.add_argument("--retries", type=int, default=2)
     parser.add_argument("--image-size", choices=("1K", "2K", "4K"), default="2K")
@@ -208,9 +248,15 @@ def main() -> int:
         raise SystemExit("Missing GEMINI_API_KEY")
 
     rows = load_rows(args.csv)
-    rows = rows[args.offset :]
-    if args.limit > 0:
-        rows = rows[: args.limit]
+    if args.card_id:
+        wanted = args.card_id.strip().upper()
+        rows = [row for row in rows if field(row, "Card ID", "Card_ID", "id").upper() == wanted]
+        if not rows:
+            raise SystemExit(f"Card ID not found: {wanted}")
+    else:
+        rows = rows[args.offset :]
+        if args.limit > 0:
+            rows = rows[: args.limit]
 
     problems: list[str] = []
     resolved: list[tuple[dict[str, str], str, dict]] = []
@@ -222,7 +268,7 @@ def main() -> int:
 
     if problems:
         for problem in problems:
-            logging.error("PRELIGHT: %s", problem)
+            logging.error("PREFLIGHT: %s", problem)
         raise SystemExit(f"V8 preflight failed with {len(problems)} problem(s)")
 
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -230,18 +276,12 @@ def main() -> int:
         preview = REPORTS_DIR / "prompt_preview.jsonl"
         with preview.open("w", encoding="utf-8") as handle:
             for row, prompt, rules in resolved:
-                handle.write(
-                    json.dumps(
-                        {
-                            "card_id": field(row, "Card ID", "Card_ID", "id"),
-                            "subject": field(row, "Subject", "Species", "species"),
-                            "prompt": prompt,
-                            "rules": rules,
-                        },
-                        ensure_ascii=False,
-                    )
-                    + "\n"
-                )
+                handle.write(json.dumps({
+                    "card_id": field(row, "Card ID", "Card_ID", "id"),
+                    "subject": field(row, "Subject", "Species", "species"),
+                    "prompt": prompt,
+                    "rules": rules,
+                }, ensure_ascii=False) + "\n")
         logging.info("Dry run passed. Prompt preview: %s", preview)
         return 0
 
@@ -251,18 +291,15 @@ def main() -> int:
 
     results: list[dict] = []
     with ThreadPoolExecutor(max_workers=max(1, args.concurrency)) as pool:
-        futures = [
-            pool.submit(
-                render_one,
-                row,
-                output_dir,
-                status_path,
-                args.mode,
-                args.image_size,
-                args.retries,
-            )
-            for row in rows
-        ]
+        futures = [pool.submit(
+            render_one,
+            row,
+            output_dir,
+            status_path,
+            args.mode,
+            args.image_size,
+            args.retries,
+        ) for row in rows]
         for future in as_completed(futures):
             result = future.result()
             results.append(result)
@@ -277,6 +314,7 @@ def main() -> int:
         "model": MODEL_NAME,
         "mode": args.mode,
         "aspect_ratio": "5:7",
+        "files": [result.get("file") for result in results if result.get("file")],
     }
     (REPORTS_DIR / f"summary_{args.mode}.json").write_text(
         json.dumps(summary, indent=2), encoding="utf-8"
