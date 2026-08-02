@@ -3,6 +3,10 @@ name: Zoo V8 Render
 on:
   workflow_dispatch:
     inputs:
+      card_id:
+        description: Optional exact card ID; overrides limit and offset
+        required: false
+        default: ""
       limit:
         description: Number of cards to process; use 0 for all
         required: true
@@ -25,7 +29,7 @@ on:
           - 4K
         default: 2K
       mode:
-        description: Art plate for production; full card for visual proofs only
+        description: Art plate for production; full card for visual proofs
         required: true
         type: choice
         options:
@@ -78,7 +82,10 @@ jobs:
         run: |
           EXTRA=""
           if [ "${{ inputs.dry_run }}" = "true" ]; then
-            EXTRA="--dry-run"
+            EXTRA="$EXTRA --dry-run"
+          fi
+          if [ -n "${{ inputs.card_id }}" ]; then
+            EXTRA="$EXTRA --card-id ${{ inputs.card_id }}"
           fi
           python scripts/render_cards.py \
             --csv data/v7.1_zoo_prompts.csv \
@@ -89,13 +96,13 @@ jobs:
             --mode "${{ inputs.mode }}" \
             $EXTRA
 
-      - name: Upload V8 renders and reports
+      - name: Upload V8 images and reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: zoo-v8-${{ inputs.mode }}-offset-${{ inputs.offset }}-limit-${{ inputs.limit }}
+          name: zoo-v8-${{ inputs.mode }}-${{ inputs.card_id || format('offset-{0}-limit-{1}', inputs.offset, inputs.limit) }}
           path: |
             renders/v8/**
             reports/v8/**
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 14
