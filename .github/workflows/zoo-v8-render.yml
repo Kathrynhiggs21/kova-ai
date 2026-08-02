@@ -1,0 +1,153 @@
+name: Zoo V8 Complete Image Pipeline
+# Validation revision: corrected canonical source reconstruction
+
+on:
+  workflow_dispatch:
+    inputs:
+      generation_mode:
+        description: mock creates real preview images without Gemini charges; gemini creates production art plates
+        required: true
+        type: choice
+        options: [mock, gemini]
+        default: mock
+      card_ids:
+        description: Optional comma-separated canonical IDs; overrides offset and limit
+        required: false
+        default: ""
+      limit:
+        description: Number of canonical rows to process when card_ids is blank; 0 means all
+        required: true
+        default: "16"
+      offset:
+        description: Canonical row offset when card_ids is blank
+        required: true
+        default: "0"
+      concurrency:
+        description: Parallel card jobs
+        required: true
+        default: "4"
+      image_size:
+        description: Gemini art-plate resolution
+        required: true
+        type: choice
+        options: [1K, 2K, 4K]
+        default: 2K
+      overwrite:
+        description: Replace existing artifacts in this run
+        required: true
+        type: boolean
+        default: true
+  pull_request:
+    paths:
+      - ".github/workflows/zoo-v8-render.yml"
+      - "scripts/zoo_v8_pipeline.py"
+      - "scripts/zoo_v8_complete_runner.py"
+      - "scripts/materialize_v8_data.py"
+      - "scripts/zoo_v8_rules.py"
+      - "scripts/test_zoo_v8_pipeline.py"
+      - "data/bootstrap/**"
+      - "requirements-zoo-v8.txt"
+
+permissions:
+  contents: read
+
+jobs:
+  complete-image-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_IMAGE_MODEL: gemini-3.1-flash-image
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-zoo-v8.txt
+
+      - name: Install Zoo V8 dependencies
+        run: pip install -r requirements-zoo-v8.txt
+
+      - name: Materialize canonical V8 source files
+        run: python scripts/materialize_v8_data.py
+
+      - name: Run unit tests
+        run: python -m pytest -q scripts/test_zoo_v8_pipeline.py
+
+      - name: Resolve safe run settings
+        id: settings
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "mode=mock" >> "$GITHUB_OUTPUT"
+            echo "card_ids=A001,A002,A011,A014" >> "$GITHUB_OUTPUT"
+            echo "limit=4" >> "$GITHUB_OUTPUT"
+            echo "offset=0" >> "$GITHUB_OUTPUT"
+            echo "concurrency=4" >> "$GITHUB_OUTPUT"
+            echo "image_size=2K" >> "$GITHUB_OUTPUT"
+            echo "overwrite=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=${{ inputs.generation_mode }}" >> "$GITHUB_OUTPUT"
+            echo "card_ids=${{ inputs.card_ids }}" >> "$GITHUB_OUTPUT"
+            echo "limit=${{ inputs.limit }}" >> "$GITHUB_OUTPUT"
+            echo "offset=${{ inputs.offset }}" >> "$GITHUB_OUTPUT"
+            echo "concurrency=${{ inputs.concurrency }}" >> "$GITHUB_OUTPUT"
+            echo "image_size=${{ inputs.image_size }}" >> "$GITHUB_OUTPUT"
+            echo "overwrite=${{ inputs.overwrite }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate Gemini secret for paid generation
+        if: ${{ steps.settings.outputs.mode == 'gemini' }}
+        shell: bash
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "GEMINI_API_KEY is not configured for this repository."
+            exit 1
+          fi
+          echo "GEMINI_API_KEY is available."
+
+      - name: Produce complete V8 image assets
+        shell: bash
+        run: |
+          ARGS=(
+            --generation-mode "${{ steps.settings.outputs.mode }}"
+            --card-ids "${{ steps.settings.outputs.card_ids }}"
+            --limit "${{ steps.settings.outputs.limit }}"
+            --offset "${{ steps.settings.outputs.offset }}"
+            --concurrency "${{ steps.settings.outputs.concurrency }}"
+            --image-size "${{ steps.settings.outputs.image_size }}"
+          )
+          if [ "${{ steps.settings.outputs.overwrite }}" = "true" ]; then
+            ARGS+=(--overwrite)
+          fi
+          python scripts/zoo_v8_complete_runner.py "${ARGS[@]}"
+
+      - name: Publish run summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f reports/v8/run_summary.json ]; then
+            echo '## Zoo V8 Image Pipeline' >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat reports/v8/run_summary.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload final images, app assets, and reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zoo-v8-complete-${{ steps.settings.outputs.mode }}-${{ github.run_number }}
+          path: |
+            renders/v8/art_plates/**
+            renders/v8/masters/**
+            renders/v8/app/**
+            renders/v8/thumbnails/**
+            reports/v8/**
+          if-no-files-found: error
+          retention-days: 14
