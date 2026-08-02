@@ -1,4 +1,5 @@
 name: Zoo V8 Complete Image Pipeline
+# Validation revision: corrected canonical source reconstruction
 
 on:
   workflow_dispatch:
