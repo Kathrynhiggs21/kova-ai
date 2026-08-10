@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Milli Miles Zoo V8.3 Card Studio</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">MILLI MILES ZOO ADVENTURE</p>
+        <h1>V8.3 Card Studio</h1>
+        <p class="sub">One finished card per Gemini request. Canonical identity first. No fox contamination.</p>
+      </div>
+      <div class="status" id="health">Checking Gemini…</div>
+    </header>
+
+    <section class="panel">
+      <h2>1. Load V8.3 direct prompts</h2>
+      <p>Export the <strong>Manus Direct Prompts</strong> tab as CSV, or use the V8.3 direct prompt CSV. The app validates every row before generation.</p>
+      <input id="csvFile" type="file" accept=".csv,text/csv" />
+      <div class="summary" id="summary">No CSV loaded.</div>
+    </section>
+
+    <section class="panel">
+      <h2>2. Reference images for this card only</h2>
+      <p>References are isolated per generation. Do not attach a fox reference to a colobus card. The approved 33-image set controls pop-color placement behavior only.</p>
+      <input id="referenceFiles" type="file" accept="image/*" multiple />
+      <div class="thumbs" id="referenceThumbs"></div>
+    </section>
+
+    <section class="panel controls">
+      <div>
+        <label>Model</label>
+        <select id="model">
+          <option value="gemini-3.1-flash-image">Gemini 3.1 Flash Image</option>
+          <option value="gemini-3-pro-image-preview">Gemini 3 Pro Image</option>
+        </select>
+      </div>
+      <div>
+        <label>Image size</label>
+        <select id="imageSize">
+          <option value="2K">2K</option>
+          <option value="4K">4K</option>
+          <option value="1K">1K</option>
+        </select>
+      </div>
+      <label class="check"><input id="normalize5x7" type="checkbox" checked /> Normalize Gemini 3:4 output to 5:7 with geometry-only safe crop</label>
+    </section>
+
+    <section class="panel">
+      <h2>3. Queue</h2>
+      <div class="toolbar">
+        <input id="filter" placeholder="Filter by ID or subject" />
+        <button id="generateSelected" disabled>Generate selected card</button>
+        <button id="runBatch" class="secondary" disabled>Run batch until first failure</button>
+        <button id="stopBatch" class="danger" disabled>Stop</button>
+      </div>
+      <div class="queue" id="queue"></div>
+    </section>
+
+    <section class="panel output-panel">
+      <h2>4. Current result</h2>
+      <div id="outputEmpty" class="empty">Generate a card to preview it here.</div>
+      <div id="output" class="output hidden">
+        <div class="result-meta" id="resultMeta"></div>
+        <img id="resultImage" alt="Generated card" />
+        <div class="toolbar">
+          <a id="downloadLink" class="button" download>Download PNG</a>
+          <button id="markApproved" class="secondary">Mark locally approved</button>
+          <button id="markFailed" class="danger">Mark locally failed</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel notes">
+      <h2>V8.3 guardrails active</h2>
+      <ul>
+        <li>Exact canonical ID and subject must match the prompt.</li>
+        <li>One finished card per generation request; no text-free art-plate stage.</li>
+        <li>Subject and foreground stay crisp; only distant habitat may soften.</li>
+        <li>Organic frame is radically asymmetric and physically belongs to the habitat.</li>
+        <li>Pop color is localized, selective, clean and usually subject-derived; habitat may supply it when needed.</li>
+        <li>No four-sided surround, grunge, speckles, splatter, glow, ombré, fake paper field, or repeated picture-frame silhouette.</li>
+        <li>Title panel, info panel and plaque must match in physical material treatment.</li>
+        <li>Batch mode stops on the first blocked row or failed request.</li>
+      </ul>
+    </section>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
