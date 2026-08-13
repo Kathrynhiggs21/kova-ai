@@ -15,7 +15,7 @@ jobs:
           FILE="$(git ls-files **/package.json | grep -v node_modules | head -n 1 || true)"
           if [ -z "$FILE" ]; then
             echo "found=0" >> $GITHUB_OUTPUT
-            echo "dir=."   >> $GITHUB_OUTPUT
+            echo "dir=." >> $GITHUB_OUTPUT
           else
             echo "found=1" >> $GITHUB_OUTPUT
             echo "dir=$(dirname "$FILE")" >> $GITHUB_OUTPUT
@@ -29,14 +29,12 @@ jobs:
         if: ${{ steps.pkg.outputs.found == '1' }}
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: ${{ steps.pkg.outputs.dir }}/package-lock.json
+          node-version: 24
 
       - name: Install
         if: ${{ steps.pkg.outputs.found == '1' }}
         working-directory: ${{ steps.pkg.outputs.dir }}
-        run: npm ci || npm i
+        run: npm ci || npm install
 
       - name: Build
         if: ${{ steps.pkg.outputs.found == '1' }}
