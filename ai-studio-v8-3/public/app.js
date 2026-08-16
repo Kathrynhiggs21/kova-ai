@@ -168,6 +168,9 @@ $('runBatch').addEventListener('click', async () => {
   } finally {
     $('runBatch').disabled = false;
     $('stopBatch').disabled = true;
+    // Re-evaluate the generate button state based on current selection
+    const row = state.filtered[state.selectedIndex];
+    $('generateSelected').disabled = !row || row._validation?.length > 0;
   }
 });
 
