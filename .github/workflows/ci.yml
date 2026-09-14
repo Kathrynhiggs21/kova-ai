@@ -1,47 +1,43 @@
 name: CI
-on: [push, pull_request]
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  root-node:
+    name: Root Node app
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-      # Discover the FIRST package.json (ignore node_modules). If none, skip Node steps gracefully.
-      - id: pkg
-        shell: bash
-        run: |
-          FILE="$(git ls-files **/package.json | grep -v node_modules | head -n 1 || true)"
-          if [ -z "$FILE" ]; then
-            echo "found=0" >> $GITHUB_OUTPUT
-            echo "dir=." >> $GITHUB_OUTPUT
-          else
-            echo "found=1" >> $GITHUB_OUTPUT
-            echo "dir=$(dirname "$FILE")" >> $GITHUB_OUTPUT
-          fi
-
-      - name: No Node project – noop pass
-        if: ${{ steps.pkg.outputs.found == '0' }}
-        run: echo "No package.json found. Passing CI with no-op."
-
-      - name: Set up Node
-        if: ${{ steps.pkg.outputs.found == '1' }}
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
 
-      - name: Install
-        if: ${{ steps.pkg.outputs.found == '1' }}
-        working-directory: ${{ steps.pkg.outputs.dir }}
-        run: npm ci || npm install
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test -- --runInBand
 
       - name: Build
-        if: ${{ steps.pkg.outputs.found == '1' }}
-        working-directory: ${{ steps.pkg.outputs.dir }}
-        run: npm run build --if-present
+        run: npm run build
 
-      - name: Test
-        if: ${{ steps.pkg.outputs.found == '1' }}
-        working-directory: ${{ steps.pkg.outputs.dir }}
-        run: npm test --if-present
+      - name: Smoke-test built entrypoint
+        run: node dist/index.js
