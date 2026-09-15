@@ -1,33 +1,59 @@
-name: KOVA Auto Update
+name: KOVA Continuous Audit
 
 on:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   workflow_dispatch:
   schedule:
     - cron: '17 10 * * *'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  validate-and-snapshot:
+  audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - name: Validate repository
+
+      - name: Validate canonical KOVA files
+        shell: bash
         run: |
-          set -e
-          test -f README.md || echo '# KOVA OS' > README.md
-          mkdir -p docs/status
-          printf '# KOVA Automated Status\n\nLast workflow run: %s UTC\n\nCommit: `%s`\n' "$(date -u '+%Y-%m-%d %H:%M:%S')" "$GITHUB_SHA" > docs/status/AUTO_STATUS.md
-      - name: Commit generated status when changed
+          set -euo pipefail
+          test -f README.md
+          test -f docs/KOVA_CANONICAL_ARCHITECTURE.md
+          test -f .gitignore
+
+      - name: Check repository cleanliness and basic project health
+        shell: bash
         run: |
-          git config user.name 'kova-automation'
-          git config user.email 'actions@users.noreply.github.com'
-          git add README.md docs/status/AUTO_STATUS.md
-          git diff --cached --quiet && exit 0
-          git commit -m 'chore(kova): automated status update'
-          git push
+          set -euo pipefail
+          git status --short
+          if [ -f package.json ]; then
+            node --version
+            npm --version
+            if [ -f package-lock.json ]; then
+              npm ci --ignore-scripts
+            fi
+            npm test --if-present
+          fi
+
+      - name: Write KOVA audit summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '# KOVA Continuous Audit'
+            echo
+            echo "- Repository: \`${GITHUB_REPOSITORY}\`"
+            echo "- Ref: \`${GITHUB_REF_NAME}\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Trigger: \`${GITHUB_EVENT_NAME}\`"
+            echo "- Run time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            echo
+            echo 'The workflow is intentionally read-only. Canonical updates should enter through reviewed commits/PRs rather than a bot pushing directly to protected `main`.'
+          } >> "$GITHUB_STEP_SUMMARY"
