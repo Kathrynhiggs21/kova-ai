@@ -1,12 +1,12 @@
-# KOVA Assistant Migration Source
+# KOVA OS Core Assistant Component
 
-Mixed repository containing KOVA assistant/application experiments, automation, branding, documentation, and historical generated assets.
+Core repository for KOVA assistant/application logic plus supporting documentation and historical assets.
 
 ## Current role
 
-This repository is a migration source, not the canonical KOVA OS hub and not an independently deployable KOVA system. Canonical architecture and repository roles live in [Kathrynhiggs21/Kova-ai-SYSTEM](https://github.com/Kathrynhiggs21/Kova-ai-SYSTEM).
+This repository is the core assistant/application logic component for KOVA OS. It is not the canonical cross-repository orchestration hub and not an independently deployable KOVA system. Canonical architecture and repository roles live in [Kathrynhiggs21/Kova-ai-SYSTEM](https://github.com/Kathrynhiggs21/Kova-ai-SYSTEM).
 
-Useful code should be audited directory by directory and migrated through reviewed pull requests. Do not copy the entire repository into another component: some content is historical, generated, or belongs to other projects.
+Extend existing working code in this repository where possible. Audit historical directories before reuse and avoid bulk-copying the repository into other components.
 
 ## Directory guide
 

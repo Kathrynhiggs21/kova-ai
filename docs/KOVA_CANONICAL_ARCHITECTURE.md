@@ -1,6 +1,6 @@
 # KOVA Canonical Architecture
 
-KOVA is one logical system. This repository is the canonical code source for the KOVA Operating System, KOVA AI Assistant, dashboard, MCP/integrations, automation, documentation, and deployment configuration.
+KOVA is one logical system. This repository is the core assistant/application logic component for KOVA OS, while canonical cross-repository orchestration and ownership mapping live in `Kathrynhiggs21/Kova-ai-SYSTEM`.
 
 ## Canonical naming
 - KOVA OS — complete operating system and orchestration layer
@@ -15,7 +15,7 @@ Historical spellings such as K9VA, Kiva, and Kova AI should be treated as KOVA w
 ## Canonical web namespace
 Primary domain: `kovaos.com`
 
-Preferred routes/subdomains should be documented and deployed from this repository, for example:
+Preferred routes/subdomains should be documented and deployed according to the canonical orchestration map, for example:
 - `kovaos.com` — main KOVA site
 - `kovaos.com/dashboard` — dashboard
 - `kovaos.com/ai` — AI assistant entry point
