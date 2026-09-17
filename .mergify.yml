@@ -1,0 +1,28 @@
+queue_rules:
+  - name: default
+    conditions:
+      - -conflict
+      - -draft
+      - check-success=CI
+      - check-success=KOVA Continuous Audit
+
+pull_request_rules:
+  - name: manual automerge with explicit label only
+    conditions:
+      - label=automerge
+      - label!=do-not-merge
+      - queue=default
+    actions:
+      queue:
+        name: default
+        method: squash
+        update_method: rebase
+      delete_head_branch: {}
+
+  - name: block if do-not-merge
+    conditions:
+      - label=do-not-merge
+    actions:
+      dismiss_reviews:
+        approved: true
+        changes_requested: true
