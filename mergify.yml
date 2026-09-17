@@ -3,19 +3,24 @@
 # required checks are explicitly verified for this repository's current role.
 
 pull_request_rules:
-  - name: disable automerge labels in mixed legacy repo
+  - name: disable mergify automerge labels in mixed legacy repo
     conditions:
       - label=automerge
     actions:
       label:
         remove:
           - automerge
+      comment:
+        message: >
+          This repository is a mixed legacy migration source. Mergify-based
+          automerge is intentionally disabled here; merge manually after review
+          and verified checks, and keep GitHub native auto-merge off unless
+          branch protections are explicitly re-approved for this repository.
 
   - name: preserve do-not-merge safety label
     conditions:
       - label=do-not-merge
-      - label=automerge
     actions:
-      label:
-        remove:
-          - automerge
+      dismiss_reviews:
+        approved: true
+        changes_requested: false
