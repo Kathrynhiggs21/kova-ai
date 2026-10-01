@@ -1,35 +1,21 @@
-# KOVA Canonical Architecture
+# KOVA Repository Boundary
 
-KOVA is one logical system. This repository is the canonical code source for the KOVA Operating System, KOVA AI Assistant, dashboard, MCP/integrations, automation, documentation, and deployment configuration.
+This repository is a **disabled legacy assistant and application migration source**. The current machine-readable authority is `kova_repos_config.json` in [Kathrynhiggs21/Kova-ai-SYSTEM](https://github.com/Kathrynhiggs21/Kova-ai-SYSTEM).
 
-## Canonical naming
-- KOVA OS — complete operating system and orchestration layer
-- KOVA AI Assistant — conversational/agent interface
-- KOVA Dashboard — web control center
-- KOVA MCP — MCP servers, clients, connectors, and tools
-- KOVA Automations — scheduled/event-driven workflows
-- KOVA Data — schemas, indexes, metadata, and synchronization logic
+## Canonical ownership
 
-Historical spellings such as K9VA, Kiva, and Kova AI should be treated as KOVA when they refer to this project. Do not create duplicate physical folders merely to mirror naming variants.
+| Component | Canonical repository |
+| --- | --- |
+| Orchestration, backend, architecture, and cross-repository registry | `Kathrynhiggs21/Kova-ai-SYSTEM` |
+| Authenticated web application and production routes for `kovaos.com` | `Kathrynhiggs21/kovaos-site` |
+| Legacy assistant code in this repository | Disabled migration source; promote only by explicit registry decision |
 
-## Canonical web namespace
-Primary domain: `kovaos.com`
+Read the hub's `AGENTS.md` and `docs/architecture/KOVA_REPOSITORY_MAP.md` before changing these boundaries. Historical instructions calling this repository the canonical KOVA code source or telling it to deploy the production domain are superseded.
 
-Preferred routes/subdomains should be documented and deployed from this repository, for example:
-- `kovaos.com` — main KOVA site
-- `kovaos.com/dashboard` — dashboard
-- `kovaos.com/ai` — AI assistant entry point
-- `kovaos.com/mcp` — MCP/integration documentation or service entry point
-- `kovaos.com/docs` — documentation
+## Migration and automation
 
-DNS/provider configuration and credentials must never be committed to the repository. Deployment providers should read secrets from their protected environment/secret stores.
+Preserve useful code and history. Migrate reviewed features into the canonical repositories instead of building another KOVA dashboard or control plane. The root Node tests and build validate the legacy root entrypoint; they do not prove any nested project or deployed provider connection works.
 
-## Automation policy
-1. `main` is the canonical current state.
-2. GitHub Actions performs automated validation/status maintenance.
-3. Releases are versioned snapshots; normal updates should not create duplicate source trees.
-4. External data (Drive, ChatGPT project material, Notion, etc.) should be indexed/synchronized into canonical representations rather than blindly duplicated.
-5. Secrets, passwords, recovery codes, OAuth tokens, API keys, private personal data, and credential exports must never be committed or published.
+Use reviewed manual merges and actual implementation checks. This migration source has no approved Mergify merge queue. Keep one canonical home per artifact and sync links, identifiers, metadata, and status rather than mirroring files. Keep KOVA AI World separate from KOVA Core.
 
-## Domain deployment
-Domain configuration should be automated through the chosen deployment provider only after the provider and DNS authority are connected with appropriate scoped credentials. The repository may contain deployment configuration, but not the credentials themselves.
+Never commit credentials, private records, recovery codes, or provider tokens. Domain reassignment, production environment overwrites, deletion, and irreversible integration unlinking require the owner's final check in the provider console.
